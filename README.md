@@ -1,6 +1,6 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Soliton-Analytics-Team/Faiss/blob/main/Faiss.ipynb)
 
-# 【悲報】ScaNN、Faiss-gpu にぶっちぎられる　ScaNN-gpu マダー？
+# Faiss-gpuはどれぐらい速いのかcolabで試してみた
 
 Googleから[ScaNN](https://github.com/google-research/google-research/tree/master/scann) (Scalable Nearest Neighbors)というベクトル近似近傍検索が出て、速さを売りにしています。確かに[ベンチマーク](http://ann-benchmarks.com)でも結果がでています。ただ、このベンチマーク、CPUオンリーで、GPUを使う近傍検索との比較がありません。GPUが使えるといえば、[Faiss](https://github.com/facebookresearch/faiss)ですね。というわけで、早速、GPUが使えるcolabで測定してみましょう。
 結論を先に言うと、GPUすごく速いです。
@@ -8,8 +8,8 @@ Googleから[ScaNN](https://github.com/google-research/google-research/tree/mast
 と、その前に、ランタイムはまだGPUにしないでください。途中で切り替えないとうまく実行できません。最初はランタイムNoneで進めてください。
 
 ## データの取得
-評価の対象とするデータは[ann-benchmarks](http://ann-benchmarks.com/)のglove-100-angularを使います。これ、Faissの中の人によると[ScaNNに有利なデータ分布](https://github.com/facebookresearch/faiss/wiki/Indexing-1M-vectors#4-bit-pq-comparison-with-scann)だそうなのですが、まあ、いいでしょう。
 
+評価の対象とするデータは[ann-benchmarks](http://ann-benchmarks.com/)のglove-100-angularを使います。これ、Faissの中の人によると[ScaNNに有利なデータ分布](https://github.com/facebookresearch/faiss/wiki/Indexing-1M-vectors#4-bit-pq-comparison-with-scann)だそうなのですが、まあ、いいでしょう。
 
 ```shell
 !wget http://ann-benchmarks.com/glove-100-angular.hdf5
@@ -26,10 +26,7 @@ Googleから[ScaNN](https://github.com/google-research/google-research/tree/mast
 
     2022-10-20 10:34:12 (12.2 MB/s) - ‘glove-100-angular.hdf5’ saved [485413888/485413888]
 
-
-
 検索対象のデータは100次元で約100万件、クエリーデータは1万件です。neighborsに正解が入ります。
-
 
 ```python
 import numpy as np
@@ -49,16 +46,13 @@ print("true_neighbors", neighbors.shape)
     queries (10000, 100)
     true_neighbors (10000, 100)
 
-
 なぜかデータを正規化しておかないとScaNNで上手く動きません。この辺りはよく分かっていませんが、ここでは追求せず先に進みます。
-
 
 ```python
 normalized_dataset = dataset / np.linalg.norm(dataset, axis=1)[:, np.newaxis]
 ```
 
 再現率を計算する関数を作っておきましょう。
-
 
 ```python
 def compute_recall(neighbors, true_neighbors):
@@ -72,21 +66,18 @@ def compute_recall(neighbors, true_neighbors):
 
 Faissと対比するため、先にScaNNで測定します。まずはインストール
 
-
 ```python
 !pip install scann --quiet
 import scann
 ```
 
-    |████████████████████████████████| 10.4 MB 5.3 MB/s 
-    |████████████████████████████████| 578.0 MB 14 kB/s 
-    |████████████████████████████████| 438 kB 69.1 MB/s 
-    |████████████████████████████████| 1.7 MB 45.3 MB/s 
-    |████████████████████████████████| 5.9 MB 35.6 MB/s 
-    
+    |████████████████████████████████| 10.4 MB 5.3 MB/s
+    |████████████████████████████████| 578.0 MB 14 kB/s
+    |████████████████████████████████| 438 kB 69.1 MB/s
+    |████████████████████████████████| 1.7 MB 45.3 MB/s
+    |████████████████████████████████| 5.9 MB 35.6 MB/s
 
 最初に総当たりのモデルを作成します。これは一瞬ですね。
-
 
 ```shell
 %%time
@@ -97,7 +88,6 @@ scann_brute = scann.scann_ops_pybind.builder(normalized_dataset, 10, "dot_produc
     Wall time: 739 ms
 
 処理時間37秒。あたりまえですが、再現率100%。上手く処理できていることが確認できました。
-
 
 ```python
 start = time.time()
@@ -331,7 +321,6 @@ gpu_index.add(normalized_dataset)
     Wall time: 429 ms
 
 デフォルトで検索します。処理時間は0.2秒ですが、再現率が53%です。
-
 
 ```python
 start = time.time()
